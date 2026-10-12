@@ -1033,12 +1033,9 @@ class RemoteSessionService {
     final fullQueue = _queueService.getQueue().fullQueue;
     if (fullQueue.isEmpty) return;
     final clampedTarget = targetIndex.clamp(0, fullQueue.length - 1);
-    final driveRepeatOneLocally = _queueService.loopMode == FinampLoopMode.one &&
-        _activeSupportedCommands?.contains("SetRepeatMode") != true;
-    final window = fullQueue
-        .skip(clampedTarget)
-        .take(driveRepeatOneLocally ? 1 : _maxTracksPerPlayNow)
-        .toList();
+    final driveRepeatOneLocally =
+        _queueService.loopMode == FinampLoopMode.one && _activeSupportedCommands?.contains("SetRepeatMode") != true;
+    final window = fullQueue.skip(clampedTarget).take(driveRepeatOneLocally ? 1 : _maxTracksPerPlayNow).toList();
     final itemIds = window.map((item) => item.baseItemId).toList();
     _lastPushedQueueIds = itemIds.map((id) => _normalizeId(id.raw)).toList();
     _settleDeadline = DateTime.now().add(const Duration(seconds: 10));

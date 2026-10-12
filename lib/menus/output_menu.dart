@@ -318,8 +318,7 @@ class _OutputTargetListState extends State<OutputTargetList> {
   /// an empty list.
   Future<List<SessionInfo>> _loadSessions() async {
     try {
-      final myDeviceId =
-          (await jellyfin_api.getDeviceInfo(deviceId: FinampSettingsHelper.finampSettings.deviceId)).id;
+      final myDeviceId = (await jellyfin_api.getDeviceInfo(deviceId: FinampSettingsHelper.finampSettings.deviceId)).id;
       return (await GetIt.instance<JellyfinApiHelper>().getSessions())
           .where((s) => s.supportsRemoteControl && s.deviceId != myDeviceId)
           .toList();
