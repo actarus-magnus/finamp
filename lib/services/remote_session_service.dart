@@ -5,6 +5,7 @@ import 'package:finamp/components/global_snackbar.dart';
 import 'package:finamp/l10n/app_localizations.dart';
 import 'package:finamp/models/finamp_models.dart';
 import 'package:finamp/models/jellyfin_models.dart';
+import 'package:finamp/services/finamp_settings_helper.dart';
 import 'package:finamp/services/jellyfin_api_helper.dart';
 import 'package:finamp/services/music_player_background_task.dart';
 import 'package:finamp/services/playon_service.dart';
@@ -101,6 +102,14 @@ class RemoteSessionService {
   // request is cheap.
   static const Duration _watchdogInterval = Duration(seconds: 30);
   Timer? _watchdogTimer;
+
+  // How long the websocket may stay down while controlling a remote before
+  // we give up and disconnect. Covers brief drops, which PlayOnService's
+  // reconnection loop recovers from (its first retries come after ~5s and
+  // ~6.5s by default); beyond that the remote can't be monitored.
+  static const Duration _socketLossGrace = Duration(seconds: 15);
+  StreamSubscription<SocketState>? _socketStateSubscription;
+  Timer? _socketLossTimer;
 
   /// Non-null between pushing a queue to the remote and the remote reporting
   /// playback of one of the pushed tracks: session updates during that window
@@ -220,6 +229,11 @@ class RemoteSessionService {
     }
     _log.info("Connecting to remote session $sessionId (migrateQueue: $migrateQueue)");
 
+    // Without the websocket there are no live updates from the remote (only
+    // the watchdog's occasional poll), so refuse to connect rather than
+    // controlling it half-blind. Checked before touching any playback state.
+    await GetIt.instance<PlayOnService>().ensureConnected();
+
     // Capture playback state before switching sessions (the getters follow
     // whichever session is active): when switching remote-to-remote this is
     // the previous remote's state, which the new session continues from.
@@ -297,8 +311,9 @@ class RemoteSessionService {
   ///   queue if there was nothing playing here before connecting.
   ///
   /// If the remote was playing, local playback resumes; a paused (or vanished)
-  /// remote stays paused locally.
-  Future<void> disconnect({bool pauseRemote = true}) async {
+  /// remote stays paused locally, as does everything when [resumeLocally] is
+  /// false (e.g. after losing the connection to the server).
+  Future<void> disconnect({bool pauseRemote = true, bool resumeLocally = true}) async {
     _log.info("Disconnecting from remote session $_activeSessionId");
     // Continue locally from where the remote left off: remember the remote's
     // last-known track, position and playing state before tearing down state
@@ -323,20 +338,20 @@ class RemoteSessionService {
     // the (now gone) remote. When the remote vanished instead of being migrated
     // back (pauseRemote is false), stay paused - suddenly blasting audio locally
     // because a remote player died would be surprising.
-    final resumeLocally = pauseRemote && wasPlaying;
+    final resumeHere = resumeLocally && pauseRemote && wasPlaying;
     if (viaMigrate) {
       // We pushed our own queue: keep it and continue from where the remote
       // left off (with any changes made while controlling the remote).
       if (lastPosition != null) {
         await _syncLocalToRemote(lastItemId, lastPosition);
       }
-      if (resumeLocally) {
+      if (resumeHere) {
         await _audioHandler.play(disableFade: true);
       }
     } else if (preConnectQueue != null) {
       // We adopted a foreign queue: restore this device's own queue instead of
       // carrying the remote's over.
-      await _queueService.loadSavedQueue(preConnectQueue, beginPlayingOverride: resumeLocally);
+      await _queueService.loadSavedQueue(preConnectQueue, beginPlayingOverride: resumeHere);
     } else {
       // Adopted a foreign queue with nothing playing here before: clear the
       // mirror rather than keeping the remote's queue on this device.
@@ -420,17 +435,54 @@ class RemoteSessionService {
   void _startMonitoring() {
     _stopMonitoring();
     _log.info("Monitoring remote session via the PlayOn websocket");
-    _sessionsSubscription = GetIt.instance<PlayOnService>().startSessionUpdates().listen(_handleSessions);
+    final playOnService = GetIt.instance<PlayOnService>();
+    _sessionsSubscription = playOnService.startSessionUpdates().listen(_handleSessions);
+    _socketStateSubscription = playOnService.socketStateStream.listen(_handleSocketState);
     _armWatchdog();
   }
 
   void _stopMonitoring() {
     _watchdogTimer?.cancel();
     _watchdogTimer = null;
+    _socketLossTimer?.cancel();
+    _socketLossTimer = null;
+    unawaited(_socketStateSubscription?.cancel());
+    _socketStateSubscription = null;
     if (_sessionsSubscription == null) return;
     unawaited(_sessionsSubscription?.cancel());
     _sessionsSubscription = null;
     GetIt.instance<PlayOnService>().stopSessionUpdates();
+  }
+
+  /// Disconnects when the websocket goes away for good: immediately when
+  /// Play On was turned off or the app went offline (no reconnect is coming),
+  /// otherwise after [_socketLossGrace] without a reconnect.
+  void _handleSocketState(SocketState state) {
+    if (state == SocketState.connected) {
+      if (_socketLossTimer != null) _log.info("Websocket reconnected; still monitoring remote session");
+      _socketLossTimer?.cancel();
+      _socketLossTimer = null;
+      return;
+    }
+    final settings = FinampSettingsHelper.finampSettings;
+    if (!settings.enablePlayon || settings.isOffline) {
+      _disconnectAfterSocketLoss("Play On disabled or offline mode enabled");
+      return;
+    }
+    _socketLossTimer ??= Timer(
+      _socketLossGrace,
+      () => _disconnectAfterSocketLoss("websocket down for ${_socketLossGrace.inSeconds}s"),
+    );
+  }
+
+  void _disconnectAfterSocketLoss(String reason) {
+    if (!isRemote) return;
+    _log.warning("Lost live connection to the server ($reason); disconnecting from remote session $_activeSessionId");
+    GlobalSnackbar.message((context) => AppLocalizations.of(context)!.playOnLiveConnectionLost);
+    // Pause the remote (best effort) so it isn't left playing out of our
+    // control, but don't start blasting audio locally because of a network
+    // problem.
+    unawaited(disconnect(resumeLocally: false));
   }
 
   void _armWatchdog() {

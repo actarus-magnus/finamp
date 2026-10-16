@@ -19,6 +19,7 @@ import 'package:finamp/services/jellyfin_api_helper.dart';
 import 'package:finamp/services/music_player_background_task.dart';
 import 'package:finamp/services/output_route_provider.dart';
 import 'package:finamp/services/queue_service.dart';
+import 'package:finamp/services/playon_service.dart';
 import 'package:finamp/services/remote_session_service.dart';
 import 'package:finamp/services/theme_provider.dart';
 import 'package:finamp/utils/platform_helper.dart';
@@ -292,7 +293,10 @@ class _OutputTargetListState extends State<OutputTargetList> {
   void _loadTargets() {
     final generation = ++_loadGeneration;
     _routes = null;
-    _sessions = FinampSettingsHelper.finampSettings.isOffline ? [] : null;
+    // Controlling other devices needs the Play On websocket, so there's
+    // nothing to list while offline or with Play On disabled.
+    final settings = FinampSettingsHelper.finampSettings;
+    _sessions = settings.isOffline || !settings.enablePlayon ? [] : null;
     unawaited(
       audioHandler
           .getRoutes() // empty off-Android
@@ -380,6 +384,15 @@ class _OutputTargetListState extends State<OutputTargetList> {
         )
       else
         ...sessions.map((session) => _sessionTile(context, session)),
+      if (!FinampSettingsHelper.finampSettings.isOffline && !FinampSettingsHelper.finampSettings.enablePlayon)
+        Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Text(
+            AppLocalizations.of(context)!.playOnControlRequiresPlayOn,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ),
       if (Platform.isAndroid && !_remoteSessionService.isRemote) openOsOutputOptionsButton(context),
     ];
     return SliverList(delegate: SliverChildListDelegate.fixed(targets));
@@ -465,6 +478,14 @@ class _OutputTargetListState extends State<OutputTargetList> {
       } else {
         GlobalSnackbar.message((context) => AppLocalizations.of(context)!.playOnConnectedTo(deviceName));
       }
+    } on PlayOnUnavailableException catch (e) {
+      GlobalSnackbar.message(
+        (context) => switch (e.reason) {
+          PlayOnUnavailableReason.disabled => AppLocalizations.of(context)!.playOnControlRequiresPlayOn,
+          PlayOnUnavailableReason.offline ||
+          PlayOnUnavailableReason.connectionFailed => AppLocalizations.of(context)!.playOnLiveConnectionFailed,
+        },
+      );
     } catch (e) {
       GlobalSnackbar.message((context) => AppLocalizations.of(context)!.playOnConnectFailed(e.toString()));
     } finally {

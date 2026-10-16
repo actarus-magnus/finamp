@@ -35,9 +35,31 @@ StreamSubscription<int>? _isControlledSubscription;
 
 enum SocketState { disconnected, connecting, connected }
 
+/// Why [PlayOnService.ensureConnected] could not provide a websocket.
+enum PlayOnUnavailableReason { disabled, offline, connectionFailed }
+
+class PlayOnUnavailableException implements Exception {
+  const PlayOnUnavailableException(this.reason);
+
+  final PlayOnUnavailableReason reason;
+
+  @override
+  String toString() => "PlayOnUnavailableException: $reason";
+}
+
 class PlayOnService {
   // If the websocket connection to the server is established
-  SocketState socketState = SocketState.disconnected;
+  final _socketState = BehaviorSubject<SocketState>.seeded(SocketState.disconnected);
+  SocketState get socketState => _socketState.value;
+  set socketState(SocketState state) {
+    if (state != _socketState.value) _socketState.add(state);
+  }
+
+  /// The websocket's state, replaying the current state on listen.
+  Stream<SocketState> get socketStateStream => _socketState.stream;
+
+  /// How long [ensureConnected] waits for the websocket to come up.
+  static const Duration _ensureConnectedTimeout = Duration(seconds: 10);
   // If a remote client is controlling the session
   bool isControlled = false;
   // If pending connections should be cancelled and the socket closed
@@ -73,6 +95,30 @@ class PlayOnService {
         unawaited(startListener());
     }
     return _sessionsStream.stream;
+  }
+
+  /// Makes sure the websocket is connected, starting a connection attempt if
+  /// needed. Remote control relies on the server-pushed Sessions updates it
+  /// carries, so this throws a [PlayOnUnavailableException] when Play On is
+  /// disabled, the app is offline, or the socket doesn't come up in time.
+  Future<void> ensureConnected() async {
+    final settings = FinampSettingsHelper.finampSettings;
+    if (settings.isOffline) {
+      throw const PlayOnUnavailableException(PlayOnUnavailableReason.offline);
+    }
+    if (!settings.enablePlayon) {
+      throw const PlayOnUnavailableException(PlayOnUnavailableReason.disabled);
+    }
+    if (socketState == SocketState.connected) return;
+    if (socketState == SocketState.disconnected) {
+      unawaited(startListener());
+    }
+    try {
+      await socketStateStream.firstWhere((state) => state == SocketState.connected).timeout(_ensureConnectedTimeout);
+    } on TimeoutException {
+      _playOnServiceLogger.warning("Websocket did not connect within ${_ensureConnectedTimeout.inSeconds}s");
+      throw const PlayOnUnavailableException(PlayOnUnavailableReason.connectionFailed);
+    }
   }
 
   /// Stops the server-side Sessions subscription started by

@@ -3799,6 +3799,18 @@
     "@playOnRemoteDeviceDisconnected": {
         "description": "Snackbar message shown when the connection to the remote device was lost and Finamp automatically returned to local playback."
     },
+    "playOnControlRequiresPlayOn": "Enable Play On in the settings to control other devices",
+    "@playOnControlRequiresPlayOn": {
+        "description": "Shown in the output menu in place of the list of remote devices, and as a snackbar when trying to connect to one, while the Play On setting is disabled. Controlling other devices relies on the same live server connection as Play On."
+    },
+    "playOnLiveConnectionFailed": "Couldn't establish a live connection to the server",
+    "@playOnLiveConnectionFailed": {
+        "description": "Snackbar message shown when connecting to a remote device is refused because the live (websocket) connection to the server, needed to follow the remote device's playback, could not be established."
+    },
+    "playOnLiveConnectionLost": "Lost the live connection to the server, disconnected from the remote device",
+    "@playOnLiveConnectionLost": {
+        "description": "Snackbar message shown when the live (websocket) connection to the server dropped while controlling a remote device and did not come back, so Finamp stopped controlling it."
+    },
     "playOnThisDevice": "{deviceType, select, phone{This phone} tablet{This tablet} computer{This computer} other{This device}}",
     "@playOnThisDevice": {
         "placeholders": {
