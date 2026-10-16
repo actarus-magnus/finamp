@@ -37,7 +37,7 @@ Future<void> showOutputMenu({required BuildContext context, bool usePlayerTheme 
 
   FeedbackHelper.feedback(FeedbackType.selection);
 
-  await showThemedBottomSheet(
+  await showThemedBottomSheet<void>(
     context: context,
     item: queueService.getCurrentTrack()?.baseItem,
     routeName: outputMenuRouteName,
@@ -196,7 +196,7 @@ class OutputMenuHeader extends ConsumerWidget {
               ),
             ),
           ),
-          if (Platform.isIOS)
+          if (Platform.isIOS || Platform.isMacOS)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8.0),
               child: AnimatedSwitcher(
@@ -225,7 +225,7 @@ class OutputMenuHeader extends ConsumerWidget {
                 audioHandler.showOutputSwitcherDialog();
               },
             ),
-          if (!Platform.isAndroid && !Platform.isIOS) SizedBox(width: 32, height: 8),
+          if (!Platform.isAndroid && !Platform.isIOS && !Platform.isMacOS) SizedBox(width: 32, height: 8),
         ],
       ),
     );
@@ -574,7 +574,7 @@ class _OutputTargetListState extends State<OutputTargetList> {
       subtitle: AppLocalizations.of(context)!.deviceType("speaker"),
       leading: Container(
         padding: const EdgeInsets.all(16.0),
-        color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
         child: Icon(isDesktop ? TablerIcons.device_laptop : TablerIcons.device_mobile),
       ),
       icon: isLocal ? TablerIcons.device_speaker_filled : TablerIcons.device_speaker,
@@ -649,7 +649,7 @@ class _OutputTargetListState extends State<OutputTargetList> {
             )
           : Container(
               padding: const EdgeInsets.all(16.0),
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
               // The icon marks the tile as a remote (cast) target; the
               // connection state is conveyed by the tile's active state, not
               // the icon.
@@ -701,7 +701,7 @@ class OutputSelectorTile extends StatelessWidget {
       // subtitle: AppLocalizations.of(context)!.songCount(childCount ?? 0),
       leading: Container(
         padding: const EdgeInsets.all(16.0),
-        color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
         child: Icon(switch (routeInfo.deviceType) {
           1 => TablerIcons.device_tv,
           3 => TablerIcons.bluetooth,
@@ -765,7 +765,7 @@ class _VolumeSliderState extends ConsumerState<VolumeSlider> {
         opacity: widget.enabled ? 1.0 : 0.6,
         child: Container(
           decoration: ShapeDecoration(
-            color: themeColor.withOpacity(0.3),
+            color: themeColor.withValues(alpha: 0.3),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
           clipBehavior: Clip.antiAlias,
@@ -790,7 +790,7 @@ class _VolumeSliderState extends ConsumerState<VolumeSlider> {
                     ),
                     thumbColor: Colors.white,
                     activeTrackColor: themeColor,
-                    inactiveTrackColor: themeColor.withOpacity(0.3),
+                    inactiveTrackColor: themeColor.withValues(alpha: 0.3),
                     overlayShape: SliderComponentShape.noOverlay,
                   ),
                   child: Slider(

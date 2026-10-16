@@ -771,6 +771,7 @@ final class _$JellyfinApi extends JellyfinApi {
     int? limit,
     bool? isFavorite,
     String? nameStartsWith,
+    String? nameLessThan,
   }) async {
     final Uri $url = Uri.parse('/Artists');
     final Map<String, dynamic> $params = <String, dynamic>{
@@ -785,6 +786,7 @@ final class _$JellyfinApi extends JellyfinApi {
       'Limit': limit,
       'isFavorite': isFavorite,
       'NameStartsWith': nameStartsWith,
+      'NameLessThan': nameLessThan,
     };
     final Request $request = Request(
       'GET',
@@ -817,6 +819,7 @@ final class _$JellyfinApi extends JellyfinApi {
     required String userId,
     bool? isFavorite,
     String? nameStartsWith,
+    String? nameLessThan,
   }) async {
     final Uri $url = Uri.parse('/Artists/AlbumArtists');
     final Map<String, dynamic> $params = <String, dynamic>{
@@ -835,6 +838,7 @@ final class _$JellyfinApi extends JellyfinApi {
       'UserId': userId,
       'isFavorite': isFavorite,
       'NameStartsWith': nameStartsWith,
+      'NameLessThan': nameLessThan,
     };
     final Request $request = Request(
       'GET',
@@ -861,6 +865,8 @@ final class _$JellyfinApi extends JellyfinApi {
     String? searchTerm,
     int? startIndex,
     int? limit,
+    String? nameStartsWith,
+    String? nameLessThan,
   }) async {
     final Uri $url = Uri.parse('/Genres');
     final Map<String, dynamic> $params = <String, dynamic>{
@@ -873,6 +879,8 @@ final class _$JellyfinApi extends JellyfinApi {
       'SearchTerm': searchTerm,
       'StartIndex': startIndex,
       'Limit': limit,
+      'NameStartsWith': nameStartsWith,
+      'NameLessThan': nameLessThan,
     };
     final Request $request = Request(
       'GET',

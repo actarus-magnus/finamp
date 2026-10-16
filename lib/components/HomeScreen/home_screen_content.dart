@@ -4,10 +4,8 @@ import 'dart:ui';
 import 'package:balanced_text/balanced_text.dart';
 import 'package:finamp/components/AlbumScreen/download_button.dart';
 import 'package:finamp/components/Buttons/cta_small.dart';
-import 'package:finamp/components/Buttons/simple_button.dart';
 import 'package:finamp/components/HomeScreen/home_screen_quick_action_button.dart';
 import 'package:finamp/components/HomeScreen/quick_action_editor.dart';
-import 'package:finamp/components/HomeScreen/show_all_button.dart';
 import 'package:finamp/components/MusicScreen/item_card.dart';
 import 'package:finamp/components/MusicScreen/item_wrapper.dart';
 import 'package:finamp/components/MusicScreen/music_screen_tab_view.dart';
@@ -16,7 +14,6 @@ import 'package:finamp/l10n/app_localizations.dart';
 import 'package:finamp/menus/components/icon_button_with_semantics.dart';
 import 'package:finamp/menus/home_section_menu.dart';
 import 'package:finamp/models/finamp_models.dart';
-import 'package:finamp/models/jellyfin_models.dart';
 import 'package:finamp/models/music_models.dart';
 import 'package:finamp/screens/home_screen_settings_screen.dart';
 import 'package:finamp/screens/music_screen.dart';
@@ -172,7 +169,7 @@ class _HomeScreenContentState extends ConsumerState<HomeScreenContent>
           ...[
             // monochrome icon
             SliverToBoxAdapter(
-              child: FinampIcon(56, 56, overrideColor: TextTheme.of(context).bodySmall?.color?.withOpacity(0.4)),
+              child: FinampIcon(56, 56, overrideColor: TextTheme.of(context).bodySmall?.color?.withValues(alpha: 0.4)),
             ),
             const SliverPadding(padding: EdgeInsets.only(top: 16)),
             SliverToBoxAdapter(
@@ -182,7 +179,7 @@ class _HomeScreenContentState extends ConsumerState<HomeScreenContent>
                   child: BalancedText(
                     context.l10n.builtWithByTheFinampContributors,
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 12, color: TextTheme.of(context).bodySmall?.color?.withOpacity(0.6)),
+                    style: TextStyle(fontSize: 12, color: TextTheme.of(context).bodySmall?.color?.withValues(alpha: 0.6)),
                   ),
                 ),
               ),
